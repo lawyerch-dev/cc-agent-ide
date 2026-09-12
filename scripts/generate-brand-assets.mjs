@@ -82,6 +82,9 @@ async function writePng(filePath, buffer) {
 }
 
 function createReusableWebMark(svg) {
+  if (svg.includes('currentColor')) {
+    return svg;
+  }
   const reusableMark = svg.replaceAll('stroke="black"', 'stroke="currentColor"');
   if (reusableMark === svg) {
     throw new Error('OpenBitFun mark source is missing its canonical black strokes');
@@ -98,6 +101,15 @@ async function normalizePng(input) {
 }
 
 async function renderMark(svg, size, tone, opticalSize = size) {
+  const artwork = svg.replaceAll('currentColor', tone);
+  // The current mark is a single filled path; it renders as-is at every size.
+  // The fine-line optical treatment below only applies to stroke-based masters.
+  if (svg.includes('fill="currentColor"')) {
+    return sharp(Buffer.from(artwork), { density: 144 })
+      .resize({ width: size, height: size, fit: 'contain', kernel: 'lanczos3' })
+      .png({ compressionLevel: 9, adaptiveFiltering: true })
+      .toBuffer();
+  }
   // At favicon sizes, fifteen subpixel strokes disappear. Keep the same
   // silhouette with fewer filaments. The opaque outer rim must survive
   // antialiasing independently of the decorative interior strokes.
@@ -106,7 +118,7 @@ async function renderMark(svg, size, tone, opticalSize = size) {
       : opticalSize <= 96 ? [0, 2, 4, 7, 10, 12, 14] : null;
   let index = 0;
   const reusableMark = createReusableWebMark(svg);
-  const artwork = indices ? reusableMark.replace(/<path\b[^>]*\/>/g, element => {
+  const rendered = indices ? reusableMark.replace(/<path\b[^>]*\/>/g, element => {
     const contour = index++;
     if (!indices.includes(contour)) return '';
     const outer = contour === 14;
@@ -116,7 +128,7 @@ async function renderMark(svg, size, tone, opticalSize = size) {
     return element.replace(/ (?:stroke-width|opacity)="[^"]*"/g, '')
       .replace('/>', ` stroke-width="${width}" opacity="${outer ? 1 : inner ? 0.9 : 0.75}"/>`);
   }) : reusableMark;
-  return sharp(Buffer.from(artwork.replaceAll('currentColor', tone)), { density: 144 })
+  return sharp(Buffer.from(rendered.replaceAll('currentColor', tone)), { density: 144 })
     .resize(size, size)
     .png({ compressionLevel: 9, adaptiveFiltering: true })
     .toBuffer();

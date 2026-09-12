@@ -59,11 +59,11 @@ test('application icons preserve the submitted artwork independently from the st
 
   assert.equal(
     createHash('sha256').update(applicationMark).digest('hex'),
-    '6cda0b01d037ef552690d210a1e5adfa807a806d685a49f46d110b1e3765b5a0',
+    '242bb5e61afecdeafad507d7497775767fbf33eef6c51397e31d2dca9309d936',
   );
   assert.equal(
     createHash('sha256').update(generatedIcon).digest('hex'),
-    'df460c4a43d9a68e15bee7b23b0bb68f7b9e70c26c68158ef82e2d4fd9e6288f',
+    '227862dbe7ef13244457c04469bcbb07102231bd5f583dda733424568b711b56',
   );
   assert.notDeepEqual(applicationMark, startupMark);
 
@@ -105,9 +105,9 @@ test('Web UI exposes the canonical mark as a reusable currentColor vector asset'
   const source = readFileSync('assets/brand/source/openbitfun-mark.svg', 'utf8');
   const webAsset = readFileSync('src/web-ui/public/brand/openbitfun-mark.svg', 'utf8');
 
-  assert.equal(webAsset, source.replaceAll('stroke="black"', 'stroke="currentColor"'));
-  assert.equal(webAsset.match(/<path\b/g)?.length, 15);
-  assert.match(webAsset, /stroke="currentColor"/);
+  assert.equal(webAsset, source);
+  assert.equal(webAsset.match(/<path\b/g)?.length, 1);
+  assert.match(webAsset, /fill="currentColor"/);
   assert.doesNotMatch(webAsset, /#[0-9a-f]{3,8}\b/i);
 });
 

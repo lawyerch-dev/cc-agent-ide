@@ -1,10 +1,9 @@
 # OpenBitFun application brand assets
 
 `source/openbitfun-mark.svg` is the transparent vector master for the current
-fine-line Logo used by startup and in-product brand surfaces. Its fifteen rounded
-hexagonal contours match the About dialog's static geometry. Motion and moving
-highlights are intentionally absent from static files. The SVG uses
-`currentColor`, with a light default for dark backgrounds.
+Logo used by startup and in-product brand surfaces. It is a single filled path
+that uses `currentColor`, with a light default for dark backgrounds. Motion and
+moving highlights are intentionally absent from static files.
 
 The generator also maintains the existing transparent PNG paths:
 
