@@ -26,7 +26,7 @@ import { OverflowText,
 } from '@openbitfun/ui';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Wifi, Loader, AlertTriangle, EyeOff, FolderOpen, Zap } from 'lucide-react';
+import { Wifi, Loader, AlertTriangle, EyeOff, FolderOpen, Zap, Check, KeyRound, LogIn, ExternalLink } from 'lucide-react';
 import {
   AIModelConfig as AIModelConfigType, 
   ProxyConfig, 
@@ -59,6 +59,7 @@ import {
 } from '../utils/reasoningPresets';
 import { aiApi, systemAPI } from '@/infrastructure/api';
 import type {
+  ProviderCatalogProvider,
   SubscriptionAccount,
   SubscriptionLoginMethod,
 } from '@/infrastructure/api/service-api/AIApi';
@@ -456,6 +457,13 @@ const ModelSettingsPage: React.FC = () => {
   const [loggingInProvider, setLoggingInProvider] = useState<SubscriptionProvider | null>(null);
   const [subscriptionLoginPanel, setSubscriptionLoginPanel] = useState<SubscriptionLoginPanelState | null>(null);
   const [subscriptionLoginClock, setSubscriptionLoginClock] = useState(() => Date.now());
+
+  // Two-column providers section quick-add state.
+  const [expandedApiProviderId, setExpandedApiProviderId] = useState<string | null>(null);
+  const [apiProviderKeyInput, setApiProviderKeyInput] = useState('');
+  const [apiProviderAddingId, setApiProviderAddingId] = useState<string | null>(null);
+  const [apiProviderAddError, setApiProviderAddError] = useState<string | null>(null);
+  const [apiProviderJustAddedId, setApiProviderJustAddedId] = useState<string | null>(null);
   const [subscriptionLogoutRequest, setSubscriptionLogoutRequest] = useState<SubscriptionLogoutRequest | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null);
   const modelDiscoveryRef = React.useRef(new ModelDiscoveryCoordinator());
@@ -755,12 +763,6 @@ const ModelSettingsPage: React.FC = () => {
     plan === 'go'
       ? t('subscriptionAuth.openCodePlans.go.label')
       : t('subscriptionAuth.openCodePlans.zen.label')
-  ), [t]);
-
-  const getOpenCodePlanDescription = useCallback((plan: OpenCodePlan): string => (
-    plan === 'go'
-      ? t('subscriptionAuth.openCodePlans.go.description')
-      : t('subscriptionAuth.openCodePlans.zen.description')
   ), [t]);
 
   const syncSelectedModelDrafts = (
@@ -3487,6 +3489,311 @@ const ModelSettingsPage: React.FC = () => {
     : t('modelsDevCatalog.noCache');
 
   
+  const catalogProviderById = useMemo(() => {
+    const map = new Map<string, ProviderCatalogProvider>();
+    for (const provider of modelCatalog?.provider_catalog?.providers ?? []) {
+      map.set(provider.id, provider);
+    }
+    return map;
+  }, [modelCatalog?.provider_catalog]);
+
+  const apiKeyProviders = useMemo(
+    () => providers.filter(provider => provider.requiresApiKey),
+    [providers],
+  );
+
+  const configuredProviderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const model of aiModels) {
+      const templateId = getProviderTemplateId(model);
+      if (templateId) ids.add(templateId);
+    }
+    return ids;
+  }, [aiModels]);
+
+  const getRecommendedModelId = useCallback((providerId: string): string | null => {
+    const template = providerTemplates[providerId];
+    if (!template) return null;
+    const resolved = catalogProviderById.get(providerId);
+    const recommended = resolved?.models?.filter(model => model.recommended) ?? [];
+    if (recommended.length > 0) return recommended[0].id;
+    return template.models[0] ?? null;
+  }, [catalogProviderById, providerTemplates]);
+
+  const handleApiProviderAdd = async (providerId: string) => {
+    const template = providerTemplates[providerId];
+    const modelId = getRecommendedModelId(providerId);
+    if (!template || !modelId) return;
+    setApiProviderAddingId(providerId);
+    setApiProviderAddError(null);
+    setApiProviderJustAddedId(null);
+    try {
+      const providerName = t(`providers.${providerId}.name`);
+      const existing = await configManager.getConfig<AIModelConfigType[]>('ai.models') || [];
+      const allocatedIds = new Set(
+        existing.map(model => model.id?.trim()).filter((id): id is string => Boolean(id)),
+      );
+      const id = allocateModelConfigId(modelId, allocatedIds);
+      const category = resolveModelCategory(modelId, undefined, template.format);
+      const config: AIModelConfigType = {
+        id,
+        name: providerName,
+        base_url: template.baseUrl,
+        request_url: resolveRequestUrl(template.baseUrl, template.format, modelId),
+        api_key: apiProviderKeyInput.trim(),
+        model_name: modelId,
+        provider: template.format,
+        enabled: true,
+        context_window: 200000,
+        category,
+        capabilities: getCapabilitiesByCategory(category),
+        metadata: { [PROVIDER_INSTANCE_METADATA_KEY]: generateProviderInstanceId() },
+        inline_think_in_text: true,
+        auth: { type: 'api_key' },
+      };
+      await configManager.updateConfig<AIModelConfigType[]>('ai.models', current => [...current, config]);
+      const defaultModels = await configManager.getConfig<Record<string, unknown>>('ai.default_models') || {};
+      await configManager.setConfig('ai.default_models', { ...defaultModels, primary: id });
+      setApiProviderJustAddedId(providerId);
+      setApiProviderKeyInput('');
+      setExpandedApiProviderId(null);
+    } catch (addError) {
+      setApiProviderAddError(addError instanceof Error ? addError.message : String(addError));
+    } finally {
+      setApiProviderAddingId(null);
+    }
+  };
+
+  const toggleApiProviderCard = (providerId: string) => {
+    setApiProviderAddError(null);
+    setExpandedApiProviderId(prev => (prev === providerId ? null : providerId));
+  };
+
+  const renderApiKeyProviderCard = (provider: (typeof apiKeyProviders)[number]) => {
+    const isExpanded = expandedApiProviderId === provider.id;
+    const isConfigured = configuredProviderIds.has(provider.id);
+    return (
+      <div
+        key={provider.id}
+        className={[
+          'openbitfun-model-settings__providers-card',
+          isExpanded && 'openbitfun-model-settings__providers-card--expanded',
+          isConfigured && 'openbitfun-model-settings__providers-card--configured',
+        ].filter(Boolean).join(' ')}
+      >
+        <button
+          type="button"
+          className="openbitfun-model-settings__providers-card-head"
+          onClick={() => toggleApiProviderCard(provider.id)}
+          aria-expanded={isExpanded}
+        >
+          <span className="openbitfun-model-settings__providers-card-name">{provider.name}</span>
+          <span className="openbitfun-model-settings__providers-card-desc">{provider.description}</span>
+          {isConfigured && (
+            <span className="openbitfun-model-settings__providers-card-badge">
+              <Check size={12} aria-hidden="true" />
+              {t('providersSection.apiKeys.configured')}
+            </span>
+          )}
+        </button>
+        {isExpanded && (
+          <div className="openbitfun-model-settings__providers-card-body">
+            {isConfigured ? (
+              <p className="openbitfun-model-settings__providers-card-hint">
+                {t('providersSection.apiKeys.configuredHint')}
+              </p>
+            ) : (
+              <>
+                <Field label={t('providersSection.apiKeys.keyLabel')}>
+                  <Input
+                    type="password"
+                    value={apiProviderKeyInput}
+                    onChange={(event) => setApiProviderKeyInput(event.target.value)}
+                    placeholder={t('providersSection.apiKeys.keyPlaceholder')}
+                    autoComplete="off"
+                  />
+                </Field>
+                <div className="openbitfun-model-settings__providers-card-actions">
+                  <Button
+                    size="sm"
+                    loading={apiProviderAddingId === provider.id}
+                    disabled={!apiProviderKeyInput.trim() || apiProviderAddingId !== null}
+                    onClick={() => void handleApiProviderAdd(provider.id)}
+                    leadingIcon={<KeyRound size={14} aria-hidden="true" />}
+                  >
+                    {t('providersSection.apiKeys.add')}
+                  </Button>
+                  {provider.helpUrl && (
+                    <a
+                      className="openbitfun-model-settings__providers-card-help"
+                      href={provider.helpUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {t('quickSetup.getApiKey')}
+                      <ExternalLink size={13} aria-hidden="true" />
+                    </a>
+                  )}
+                </div>
+                {apiProviderAddError && (
+                  <div className="openbitfun-model-settings__providers-card-error" role="alert">
+                    <AlertTriangle size={14} aria-hidden="true" />
+                    <span>{apiProviderAddError}</span>
+                  </div>
+                )}
+                {apiProviderJustAddedId === provider.id && (
+                  <div className="openbitfun-model-settings__providers-card-success">
+                    <Check size={14} aria-hidden="true" />
+                    <span>{t('providersSection.apiKeys.added', { provider: provider.name })}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSubscriptionCard = (account: SubscriptionAccount) => {
+    const isLoggingIn = loggingInProvider === account.provider;
+    const anyLoginInProgress = loggingInProvider !== null;
+    const loginPanel = subscriptionLoginPanel?.provider === account.provider ? subscriptionLoginPanel : null;
+    const remainingSeconds = loginPanel?.deadlineMs
+      ? Math.max(0, Math.ceil((loginPanel.deadlineMs - subscriptionLoginClock) / 1000))
+      : 0;
+    const countdown = `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`;
+    const connected = account.connected;
+    const statusText = connected
+      ? (account.expires_at
+        ? t('subscriptionAuth.expiresAt', {
+            time: i18nService.formatDate(new Date(account.expires_at * 1000), { dateStyle: 'medium', timeStyle: 'short' }),
+          })
+        : t('subscriptionAuth.tokenValid'))
+      : (account.vault_unavailable
+        ? t('subscriptionAuth.vaultUnavailable')
+        : t('subscriptionAuth.notSignedIn'));
+
+    return (
+      <div
+        key={account.provider}
+        className={[
+          'openbitfun-model-settings__providers-card',
+          connected && 'openbitfun-model-settings__providers-card--connected',
+        ].filter(Boolean).join(' ')}
+      >
+        <div className="openbitfun-model-settings__providers-card-head">
+          <span className="openbitfun-model-settings__providers-card-name">{account.display_label}</span>
+          <span className="openbitfun-model-settings__providers-card-status">
+            {connected ? <Check size={12} aria-hidden="true" /> : null}
+            {statusText}
+          </span>
+        </div>
+        <div className="openbitfun-model-settings__providers-card-body">
+          {connected ? (
+            <>
+              {account.account && (
+                <p className="openbitfun-model-settings__providers-card-account">{account.account}</p>
+              )}
+              <div className="openbitfun-model-settings__providers-card-actions">
+                <Button size="sm" variant="outline" disabled={anyLoginInProgress} onClick={() => void handleSubscriptionRefresh(account.provider)}>
+                  {t('subscriptionAuth.refresh')}
+                </Button>
+                <Button size="sm" variant="outline" disabled={anyLoginInProgress} onClick={() => requestSubscriptionLogout(account)}>
+                  {t('subscriptionAuth.logout')}
+                </Button>
+                <Button size="sm" variant="primary" disabled={anyLoginInProgress} onClick={() => handleImportFromSubscription(account)}>
+                  {t('subscriptionAuth.import')}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Button
+              size="sm"
+              variant="primary"
+              loading={isLoggingIn}
+              disabled={anyLoginInProgress}
+              onClick={() => void handleSubscriptionLogin(account.provider)}
+              leadingIcon={<LogIn size={14} aria-hidden="true" />}
+            >
+              {t(loginPanel?.status === 'failed' ? 'subscriptionAuth.retryLogin' : 'subscriptionAuth.login')}
+            </Button>
+          )}
+          {isLoggingIn && (
+            <Button
+              size="sm"
+              variant="fill"
+              disabled={loginPanel?.status === 'cancelling'}
+              onClick={() => void handleCancelSubscriptionLogin(account.provider)}
+            >
+              {t('subscriptionAuth.cancel')}
+            </Button>
+          )}
+
+          {loginPanel && (
+            <div
+              className={`openbitfun-model-settings__subscription-login-panel openbitfun-model-settings__subscription-login-panel--${loginPanel.status}`}
+              data-openbitfun-component="model-settings"
+              data-openbitfun-part="subscriptionPanel"
+              data-openbitfun-status={loginPanel.status}
+              role={loginPanel.status === 'failed' ? 'alert' : undefined}
+            >
+              <div className="openbitfun-model-settings__subscription-login-summary" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionSummary">
+                <strong>
+                  {loginPanel.status === 'failed'
+                    ? t('subscriptionAuth.loginNeedsRetry')
+                    : loginPanel.status === 'cancelling'
+                      ? t('subscriptionAuth.loginCancelling')
+                      : t('subscriptionAuth.loginPending')}
+                </strong>
+                {loginPanel.status === 'pending' && (
+                  <>
+                    <span>
+                      {t(loginPanel.method === 'browser'
+                        ? 'subscriptionAuth.browserInstructions'
+                        : 'subscriptionAuth.deviceInstructions')}
+                    </span>
+                    <span>{t('subscriptionAuth.timeRemaining', { time: countdown })}</span>
+                  </>
+                )}
+                {loginPanel.status === 'failed' && loginPanel.error && (
+                  <span>{t('subscriptionAuth.loginFailedInline', { error: loginPanel.error })}</span>
+                )}
+              </div>
+
+              {loginPanel.status === 'pending' && loginPanel.userCode && (
+                <div className="openbitfun-model-settings__subscription-code" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionCode">
+                  <span>{t('subscriptionAuth.verificationCode')}</span>
+                  <code>{loginPanel.userCode}</code>
+                </div>
+              )}
+
+              {loginPanel.status === 'pending' && (
+                <div className="openbitfun-model-settings__subscription-login-actions" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionActions">
+                  {loginPanel.userCode && (
+                    <Button size="sm" variant="outline" onClick={() => void handleCopySubscriptionCode(loginPanel.userCode!)}>
+                      {t('subscriptionAuth.copyCode')}
+                    </Button>
+                  )}
+                  {loginPanel.authorizationUrl && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void handleOpenSubscriptionAuthorization(loginPanel.authorizationUrl)}
+                      leadingIcon={<Icon name="arrow-up-right" size="sm" aria-hidden="true" />}
+                    >
+                      {t('subscriptionAuth.openAuthorization')}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <ConfigPageLayout className="openbitfun-model-settings" data-openbitfun-component="model-settings" data-openbitfun-part="root" data-openbitfun-view="settings">
       <ConfigPageHeader
@@ -3503,224 +3810,38 @@ const ModelSettingsPage: React.FC = () => {
         </ConfigPageSection>
 
         <ConfigPageSection
-          title={t('subscriptionAuth.sectionTitle')}
-          description={t('subscriptionAuth.sectionDescription')}
-          extra={(
-            <Tooltip content={t('subscriptionAuth.rescan')}>
-              <IconButton
-                size="sm"
-                onClick={refreshSubscriptionAccounts}
-                aria-label={t('subscriptionAuth.rescan')}
-                disabled={isLoadingSubscriptions}
-                icon={<Icon name="refresh" size="md" className={isLoadingSubscriptions ? 'openbitfun-model-settings__spin' : ''} />}
-              />
-            </Tooltip>
-          )}
+          title={t('providersSection.title')}
+          description={t('providersSection.description')}
         >
-          <div className="openbitfun-model-settings__cli-discovery" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionArea">
-            {subscriptionAccounts.map((account) => {
-              const descriptionParts: string[] = [];
-              if (account.connected && account.account) {
-                descriptionParts.push(account.account);
-              }
-              if (account.connected && account.expires_at) {
-                descriptionParts.push(
-                  t('subscriptionAuth.expiresAt', {
-                    time: i18nService.formatDate(new Date(account.expires_at * 1000), {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    }),
-                  }),
-                );
-              } else if (account.connected) {
-                descriptionParts.push(t('subscriptionAuth.tokenValid'));
-              } else if (account.vault_unavailable) {
-                descriptionParts.push(t('subscriptionAuth.vaultUnavailable'));
-              } else if (account.reauthentication_required) {
-                descriptionParts.push(t('subscriptionAuth.reauthenticationRequired'));
-              } else {
-                descriptionParts.push(t('subscriptionAuth.notSignedIn'));
-              }
-              const isLoggingIn = loggingInProvider === account.provider;
-              const anyLoginInProgress = loggingInProvider !== null;
-              const loginPanel = subscriptionLoginPanel?.provider === account.provider
-                ? subscriptionLoginPanel
-                : null;
-              const remainingSeconds = loginPanel?.deadlineMs
-                ? Math.max(0, Math.ceil((loginPanel.deadlineMs - subscriptionLoginClock) / 1000))
-                : 0;
-              const countdown = `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`;
-              const openCodePlanRows = account.provider === 'opencode' ? ['zen', 'go'] as const : [];
-              const hasOpenCodeOfferings = openCodePlanRows.length > 0;
-              return (
-                <React.Fragment key={account.provider}>
-                  <ConfigPageRow
-                    label={account.display_label}
-                    description={descriptionParts.map((part) => (
-                      <span
-                        key={part}
-                        className="openbitfun-model-settings__cli-description-line"
-                      >
-                        {part}
-                      </span>
-                    ))}
-                    className="openbitfun-model-settings__cli-account"
-                    align="center"
-                  >
-                    <div className="openbitfun-model-settings__cli-actions">
-                      {account.connected ? (
-                        <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={anyLoginInProgress}
-                            onClick={() => void handleSubscriptionRefresh(account.provider)}
-                          >
-                            {t('subscriptionAuth.refresh')}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={anyLoginInProgress}
-                            onClick={() => requestSubscriptionLogout(account)}
-                          >
-                            {t('subscriptionAuth.logout')}
-                          </Button>
-                          {(account.provider !== 'opencode' || !hasOpenCodeOfferings) && (
-                            <Button
-                              size="sm"
-                              variant="primary"
-                              disabled={anyLoginInProgress}
-                              onClick={() => handleImportFromSubscription(account)}
-                            >
-                              {t('subscriptionAuth.import')}
-                            </Button>
-                          )}
-                        </>
-                      ) : account.vault_unavailable ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={anyLoginInProgress}
-                          onClick={() => void handleSubscriptionRefresh(account.provider)}
-                        >
-                          {t('subscriptionAuth.retryVault')}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="primary"
-                          loading={isLoggingIn}
-                          disabled={anyLoginInProgress}
-                          onClick={() => void handleSubscriptionLogin(account.provider)}
-                        >
-                          {t(loginPanel?.status === 'failed'
-                            ? 'subscriptionAuth.retryLogin'
-                            : 'subscriptionAuth.login')}
-                        </Button>
-                      )}
-                      {isLoggingIn && (
-                        <Button
-                          size="sm"
-                          variant="fill"
-                          disabled={loginPanel?.status === 'cancelling'}
-                          onClick={() => void handleCancelSubscriptionLogin(account.provider)}
-                        >
-                          {t('subscriptionAuth.cancel')}
-                        </Button>
-                      )}
-                    </div>
-                  </ConfigPageRow>
-
-                  {account.connected && openCodePlanRows.map((plan) => (
-                    <ConfigPageRow
-                      key={`${account.provider}:${plan}`}
-                      label={getOpenCodePlanLabel(plan)}
-                      description={getOpenCodePlanDescription(plan)}
-                      className="openbitfun-model-settings__opencode-plan"
-                      align="center"
-                    >
-                      <div className="openbitfun-model-settings__cli-actions openbitfun-model-settings__opencode-plan-actions">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={anyLoginInProgress}
-                          onClick={() => handleImportFromSubscription(account, plan)}
-                        >
-                          {t('subscriptionAuth.import')}
-                        </Button>
-                      </div>
-                    </ConfigPageRow>
-                  ))}
-
-                  {loginPanel && (
-                    <div
-                      className={`openbitfun-model-settings__subscription-login-panel openbitfun-model-settings__subscription-login-panel--${loginPanel.status}`}
-                      data-openbitfun-component="model-settings"
-                      data-openbitfun-part="subscriptionPanel"
-                      data-openbitfun-status={loginPanel.status}
-                      role={loginPanel.status === 'failed' ? 'alert' : undefined}
-                    >
-                      <div className="openbitfun-model-settings__subscription-login-summary" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionSummary">
-                        <strong>
-                          {loginPanel.status === 'failed'
-                            ? t('subscriptionAuth.loginNeedsRetry')
-                            : loginPanel.status === 'cancelling'
-                              ? t('subscriptionAuth.loginCancelling')
-                              : t('subscriptionAuth.loginPending')}
-                        </strong>
-                        {loginPanel.status === 'pending' && (
-                          <>
-                            <span>
-                              {t(loginPanel.method === 'browser'
-                                ? 'subscriptionAuth.browserInstructions'
-                                : 'subscriptionAuth.deviceInstructions')}
-                            </span>
-                            <span>{t('subscriptionAuth.timeRemaining', { time: countdown })}</span>
-                          </>
-                        )}
-                        {loginPanel.status === 'failed' && loginPanel.error && (
-                          <span>{t('subscriptionAuth.loginFailedInline', { error: loginPanel.error })}</span>
-                        )}
-                      </div>
-
-                      {loginPanel.status === 'pending' && loginPanel.userCode && (
-                        <div className="openbitfun-model-settings__subscription-code" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionCode">
-                          <span>{t('subscriptionAuth.verificationCode')}</span>
-                          <code>{loginPanel.userCode}</code>
-                        </div>
-                      )}
-
-                      {loginPanel.status === 'pending' && (
-                        <div className="openbitfun-model-settings__subscription-login-actions" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionActions">
-                          {loginPanel.userCode && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => void handleCopySubscriptionCode(loginPanel.userCode!)}
-                            >
-                              {t('subscriptionAuth.copyCode')}
-                            </Button>
-                          )}
-                          {loginPanel.authorizationUrl && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => void handleOpenSubscriptionAuthorization(loginPanel.authorizationUrl)}
-                              leadingIcon={<Icon name="arrow-up-right" size="sm" aria-hidden="true" />}
-                            >
-                              {t('subscriptionAuth.openAuthorization')}
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            })}
+          <div className="openbitfun-model-settings__providers-layout">
+            <section className="openbitfun-model-settings__providers-column" data-openbitfun-component="model-settings" data-openbitfun-part="apiKeyProviders">
+              <header className="openbitfun-model-settings__providers-column-header">
+                <h3 className="openbitfun-model-settings__providers-column-title">{t('providersSection.apiKeys.title')}</h3>
+              </header>
+              <div className="openbitfun-model-settings__providers-cards">
+                {apiKeyProviders.map(renderApiKeyProviderCard)}
+              </div>
+            </section>
+            <section className="openbitfun-model-settings__providers-column" data-openbitfun-component="model-settings" data-openbitfun-part="subscriptionProviders">
+              <header className="openbitfun-model-settings__providers-column-header">
+                <h3 className="openbitfun-model-settings__providers-column-title">{t('providersSection.subscriptions.title')}</h3>
+                <Tooltip content={t('subscriptionAuth.rescan')}>
+                  <IconButton
+                    size="sm"
+                    onClick={refreshSubscriptionAccounts}
+                    aria-label={t('subscriptionAuth.rescan')}
+                    disabled={isLoadingSubscriptions}
+                    icon={<Icon name="refresh" size="md" className={isLoadingSubscriptions ? 'openbitfun-model-settings__spin' : ''} />}
+                  />
+                </Tooltip>
+              </header>
+              <div className="openbitfun-model-settings__providers-cards">
+                {subscriptionAccounts.map(renderSubscriptionCard)}
+              </div>
+            </section>
           </div>
         </ConfigPageSection>
+
 
         <ConfigPageSection
           className="openbitfun-model-settings__models-section"

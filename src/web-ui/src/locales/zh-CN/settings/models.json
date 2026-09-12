@@ -623,4 +623,21 @@
     "warningDescription": "{{provider}} 已保存并设为主力模型，但连接测试未通过。请检查 API Key 或网络设置。",
     "later": "稍后再说"
   }
+,
+  "providersSection": {
+    "title": "模型供应商",
+    "description": "快速接入主流模型服务商：左侧填入 API Key 即可使用，右侧订阅账号通过 OAuth 登录",
+    "apiKeys": {
+      "title": "API 密钥",
+      "keyLabel": "API Key",
+      "keyPlaceholder": "粘贴 API Key",
+      "add": "添加推荐模型",
+      "added": "已添加 {{provider}}，并设为主力模型",
+      "configured": "已配置",
+      "configuredHint": "该服务商已配置，可在下方「已配置的模型」中管理"
+    },
+    "subscriptions": {
+      "title": "订阅账号"
+    }
+  }
 }

@@ -623,4 +623,21 @@
     "warningDescription": "{{provider}} was saved as your main model, but the connection test failed. Check your API key or network settings.",
     "later": "Later"
   }
+,
+  "providersSection": {
+    "title": "Model providers",
+    "description": "Connect to popular providers fast: paste an API key on the left, or sign in with OAuth on the right.",
+    "apiKeys": {
+      "title": "API keys",
+      "keyLabel": "API Key",
+      "keyPlaceholder": "Paste your API key",
+      "add": "Add recommended model",
+      "added": "Added {{provider}} and set it as your main model",
+      "configured": "Configured",
+      "configuredHint": "This provider is already configured. Manage it under the configured models below"
+    },
+    "subscriptions": {
+      "title": "Subscription accounts"
+    }
+  }
 }

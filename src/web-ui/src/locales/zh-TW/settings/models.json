@@ -623,4 +623,21 @@
     "warningDescription": "{{provider}} 已儲存並設為主力模型，但連線測試未通過。請檢查 API Key 或網路設定。",
     "later": "稍後再說"
   }
+,
+  "providersSection": {
+    "title": "模型供應商",
+    "description": "快速接入主流模型服務商：左側填入 API Key 即可使用，右側訂閱帳號透過 OAuth 登入",
+    "apiKeys": {
+      "title": "API 金鑰",
+      "keyLabel": "API Key",
+      "keyPlaceholder": "貼上 API Key",
+      "add": "新增推薦模型",
+      "added": "已新增 {{provider}}，並設為主力模型",
+      "configured": "已設定",
+      "configuredHint": "此服務商已設定，可在下方「已設定的模型」中管理"
+    },
+    "subscriptions": {
+      "title": "訂閱帳號"
+    }
+  }
 }
