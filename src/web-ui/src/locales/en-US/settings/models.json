@@ -631,7 +631,10 @@
       "title": "API keys",
       "keyLabel": "API Key",
       "keyPlaceholder": "Paste your API key",
-      "add": "Add recommended model",
+            "loadModels": "Load all models",
+      "loadingModels": "Loading…",
+      "chooseModels": "Choose models to add",
+      "addSelected": "Add selected ({{count}})",
       "added": "Added {{provider}} and set it as your main model",
       "configured": "Configured",
       "configuredHint": "This provider is already configured. Manage it under the configured models below"

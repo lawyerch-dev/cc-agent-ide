@@ -2600,3 +2600,39 @@
   background: var(--openbitfun-color-status-success-surface);
   border: 1px solid var(--openbitfun-color-status-success-border);
 }
+
+.openbitfun-model-settings__providers-model-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--openbitfun-space-1);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.openbitfun-model-settings__providers-model-option {
+  display: flex;
+  align-items: center;
+  gap: var(--openbitfun-space-2);
+  padding: var(--openbitfun-space-2);
+  border-radius: var(--openbitfun-radius-sm);
+
+  &:hover {
+    background: var(--openbitfun-color-surface-subtle);
+  }
+
+  input[type='checkbox'] {
+    flex-shrink: 0;
+  }
+}
+
+.openbitfun-model-settings__providers-model-name {
+  color: var(--openbitfun-color-content-primary);
+  font-size: var(--openbitfun-type-label-sm-font-size);
+}
+
+.openbitfun-model-settings__providers-model-desc {
+  margin-left: auto;
+  color: var(--openbitfun-color-content-secondary);
+  font-size: var(--openbitfun-type-label-xs-font-size);
+  text-align: right;
+}

@@ -631,7 +631,10 @@
       "title": "API 密钥",
       "keyLabel": "API Key",
       "keyPlaceholder": "粘贴 API Key",
-      "add": "添加推荐模型",
+            "loadModels": "加载全部模型",
+      "loadingModels": "加载中…",
+      "chooseModels": "选择要添加的模型",
+      "addSelected": "添加所选模型（{{count}}）",
       "added": "已添加 {{provider}}，并设为主力模型",
       "configured": "已配置",
       "configuredHint": "该服务商已配置，可在下方「已配置的模型」中管理"

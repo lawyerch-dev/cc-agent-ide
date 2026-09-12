@@ -25,15 +25,24 @@ describe('ModelSettingsPage providers layout', () => {
     expect(source).not.toContain("t('subscriptionAuth.sectionDescription')");
   });
 
-  it('adds an API-key provider inline: key field, add button, primary default', () => {
-    expect(source).toContain('renderApiKeyProviderCard');
-    expect(source).toContain("label={t('providersSection.apiKeys.keyLabel')}");
-    expect(source).toContain('type="password"');
-    expect(source).toContain("t('providersSection.apiKeys.add')");
-    expect(source).toContain('handleApiProviderAdd(provider.id)');
+  it('shows the provider model list and lets the user pick before adding', () => {
+    expect(source).toContain('buildProviderModelOptions(provider.id)');
+    expect(source).toContain('openbitfun-model-settings__providers-model-list');
+    expect(source).toContain('type="checkbox"');
+    expect(source).toContain('toggleApiProviderModel(provider.id, option.id)');
+    expect(source).toContain("t('providersSection.apiKeys.chooseModels')");
+    expect(source).toContain("t('providersSection.apiKeys.addSelected'");
+    expect(source).toContain('handleApiProviderFetchModels(provider.id)');
+    expect(source).toContain('aiApi.listModelsByConfig(discoveryConfig');
+  });
+
+  it('adds only the selected models and promotes the first as primary', () => {
+    expect(source).toContain('const selectedModels = apiProviderSelectedModels[providerId] ?? [];');
+    expect(source).toContain('selectedModels.length === 0');
+    expect(source).toContain('selectedModels.map(modelId => {');
     expect(source).toContain('allocateModelConfigId(modelId, allocatedIds)');
     expect(source).toContain("'ai.default_models'");
-    expect(source).toContain('primary: id');
+    expect(source).toContain('primary: configs[0].id');
   });
 
   it('lets subscription accounts log in with OAuth from the card', () => {
@@ -46,7 +55,8 @@ describe('ModelSettingsPage providers layout', () => {
   it('registers the new section under the model settings appearance surface', () => {
     expect(appearance).toContain("{ id: 'providersLayout' }");
     expect(appearance).toContain("{ id: 'providersCard' }");
-    expect(appearance).toContain("{ id: 'providersCardActions' }");
+    expect(appearance).toContain("{ id: 'providersModelList' }");
+    expect(appearance).toContain("{ id: 'providersModelOption' }");
   });
 
   it('styles the two columns with theme tokens only', () => {

@@ -65,6 +65,10 @@ export const modelSettingsAppearanceDescriptor: AppearanceSurfaceDescriptor = {
     { id: 'providersCardAccount' },
     { id: 'providersCardError' },
     { id: 'providersCardSuccess' },
+    { id: 'providersModelList' },
+    { id: 'providersModelOption' },
+    { id: 'providersModelName' },
+    { id: 'providersModelDesc' },
   ],
   facets: [
     { id: 'view', attribute: 'data-openbitfun-view', values: ['selection', 'settings'] },

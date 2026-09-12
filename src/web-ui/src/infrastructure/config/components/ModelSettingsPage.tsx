@@ -60,6 +60,7 @@ import {
 import { aiApi, systemAPI } from '@/infrastructure/api';
 import type {
   ProviderCatalogProvider,
+  RemoteModelInfo,
   SubscriptionAccount,
   SubscriptionLoginMethod,
 } from '@/infrastructure/api/service-api/AIApi';
@@ -464,6 +465,10 @@ const ModelSettingsPage: React.FC = () => {
   const [apiProviderAddingId, setApiProviderAddingId] = useState<string | null>(null);
   const [apiProviderAddError, setApiProviderAddError] = useState<string | null>(null);
   const [apiProviderJustAddedId, setApiProviderJustAddedId] = useState<string | null>(null);
+  const [apiProviderSelectedModels, setApiProviderSelectedModels] = useState<Record<string, string[]>>({});
+  const [apiProviderRemoteModels, setApiProviderRemoteModels] = useState<Record<string, RemoteModelInfo[]>>({});
+  const [apiProviderFetchingId, setApiProviderFetchingId] = useState<string | null>(null);
+  const [apiProviderFetchError, setApiProviderFetchError] = useState<string | null>(null);
   const [subscriptionLogoutRequest, setSubscriptionLogoutRequest] = useState<SubscriptionLogoutRequest | null>(null);
   const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null);
   const modelDiscoveryRef = React.useRef(new ModelDiscoveryCoordinator());
@@ -705,15 +710,6 @@ const ModelSettingsPage: React.FC = () => {
     }
     return ids;
   }, [aiModels]);
-
-  const getRecommendedModelId = useCallback((providerId: string): string | null => {
-    const template = providerTemplates[providerId];
-    if (!template) return null;
-    const resolved = catalogProviderById.get(providerId);
-    const recommended = resolved?.models?.filter(model => model.recommended) ?? [];
-    if (recommended.length > 0) return recommended[0].id;
-    return template.models[0] ?? null;
-  }, [catalogProviderById, providerTemplates]);
 
   const normalizedProviderQuery = providerQuery.trim().toLowerCase();
   const matchedProviders = useMemo(() => (
@@ -3520,10 +3516,61 @@ const ModelSettingsPage: React.FC = () => {
     : t('modelsDevCatalog.noCache');
 
   
+  const buildProviderModelOptions = (providerId: string) => {
+    const byId = new Map<string, { label: string; description?: string }>();
+    const template = providerTemplates[providerId];
+    const catalogModels = catalogProviderById.get(providerId)?.models ?? [];
+    for (const model of catalogModels) {
+      if (model.recommended) {
+        byId.set(model.id, { label: model.display_name || model.id, description: model.description });
+      }
+    }
+    for (const modelId of template?.models ?? []) {
+      if (!byId.has(modelId)) byId.set(modelId, { label: modelId });
+    }
+    for (const remote of apiProviderRemoteModels[providerId] ?? []) {
+      if (remote.id) byId.set(remote.id, { label: remote.display_name || remote.id });
+    }
+    return Array.from(byId.entries()).map(([id, meta]) => ({ id, ...meta }));
+  };
+
+  const toggleApiProviderModel = (providerId: string, modelId: string) => {
+    setApiProviderSelectedModels(prev => {
+      const current = prev[providerId] ?? [];
+      const next = current.includes(modelId)
+        ? current.filter(id => id !== modelId)
+        : [...current, modelId];
+      return { ...prev, [providerId]: next };
+    });
+  };
+
+  const handleApiProviderFetchModels = async (providerId: string) => {
+    const template = providerTemplates[providerId];
+    if (!template || !apiProviderKeyInput.trim()) return;
+    setApiProviderFetchingId(providerId);
+    setApiProviderFetchError(null);
+    try {
+      const discoveryConfig = {
+        base_url: template.baseUrl,
+        request_url: resolveRequestUrl(template.baseUrl, template.format, ''),
+        api_key: apiProviderKeyInput.trim(),
+        provider: template.format,
+        model_name: '',
+        auth: { type: 'api_key' },
+      };
+      const models = await aiApi.listModelsByConfig(discoveryConfig as AIModelConfigType);
+      setApiProviderRemoteModels(prev => ({ ...prev, [providerId]: models }));
+    } catch (fetchError) {
+      setApiProviderFetchError(fetchError instanceof Error ? fetchError.message : String(fetchError));
+    } finally {
+      setApiProviderFetchingId(null);
+    }
+  };
+
   const handleApiProviderAdd = async (providerId: string) => {
     const template = providerTemplates[providerId];
-    const modelId = getRecommendedModelId(providerId);
-    if (!template || !modelId) return;
+    const selectedModels = apiProviderSelectedModels[providerId] ?? [];
+    if (!template || selectedModels.length === 0) return;
     setApiProviderAddingId(providerId);
     setApiProviderAddError(null);
     setApiProviderJustAddedId(null);
@@ -3533,29 +3580,34 @@ const ModelSettingsPage: React.FC = () => {
       const allocatedIds = new Set(
         existing.map(model => model.id?.trim()).filter((id): id is string => Boolean(id)),
       );
-      const id = allocateModelConfigId(modelId, allocatedIds);
-      const category = resolveModelCategory(modelId, undefined, template.format);
-      const config: AIModelConfigType = {
-        id,
-        name: providerName,
-        base_url: template.baseUrl,
-        request_url: resolveRequestUrl(template.baseUrl, template.format, modelId),
-        api_key: apiProviderKeyInput.trim(),
-        model_name: modelId,
-        provider: template.format,
-        enabled: true,
-        context_window: 200000,
-        category,
-        capabilities: getCapabilitiesByCategory(category),
-        metadata: { [PROVIDER_INSTANCE_METADATA_KEY]: generateProviderInstanceId() },
-        inline_think_in_text: true,
-        auth: { type: 'api_key' },
-      };
-      await configManager.updateConfig<AIModelConfigType[]>('ai.models', current => [...current, config]);
+      const providerInstanceId = generateProviderInstanceId();
+      const configs: AIModelConfigType[] = selectedModels.map(modelId => {
+        const id = allocateModelConfigId(modelId, allocatedIds);
+        allocatedIds.add(id);
+        const category = resolveModelCategory(modelId, undefined, template.format);
+        return {
+          id,
+          name: providerName,
+          base_url: template.baseUrl,
+          request_url: resolveRequestUrl(template.baseUrl, template.format, modelId),
+          api_key: apiProviderKeyInput.trim(),
+          model_name: modelId,
+          provider: template.format,
+          enabled: true,
+          context_window: 200000,
+          category,
+          capabilities: getCapabilitiesByCategory(category),
+          metadata: { [PROVIDER_INSTANCE_METADATA_KEY]: providerInstanceId },
+          inline_think_in_text: true,
+          auth: { type: 'api_key' },
+        };
+      });
+      await configManager.updateConfig<AIModelConfigType[]>('ai.models', current => [...current, ...configs]);
       const defaultModels = await configManager.getConfig<Record<string, unknown>>('ai.default_models') || {};
-      await configManager.setConfig('ai.default_models', { ...defaultModels, primary: id });
+      await configManager.setConfig('ai.default_models', { ...defaultModels, primary: configs[0].id });
       setApiProviderJustAddedId(providerId);
       setApiProviderKeyInput('');
+      setApiProviderSelectedModels(prev => ({ ...prev, [providerId]: [] }));
       setExpandedApiProviderId(null);
     } catch (addError) {
       setApiProviderAddError(addError instanceof Error ? addError.message : String(addError));
@@ -3566,6 +3618,7 @@ const ModelSettingsPage: React.FC = () => {
 
   const toggleApiProviderCard = (providerId: string) => {
     setApiProviderAddError(null);
+    setApiProviderFetchError(null);
     setExpandedApiProviderId(prev => (prev === providerId ? null : providerId));
   };
 
@@ -3616,12 +3669,14 @@ const ModelSettingsPage: React.FC = () => {
                 <div className="openbitfun-model-settings__providers-card-actions">
                   <Button
                     size="sm"
-                    loading={apiProviderAddingId === provider.id}
-                    disabled={!apiProviderKeyInput.trim() || apiProviderAddingId !== null}
-                    onClick={() => void handleApiProviderAdd(provider.id)}
-                    leadingIcon={<KeyRound size={14} aria-hidden="true" />}
+                    loading={apiProviderFetchingId === provider.id}
+                    disabled={!apiProviderKeyInput.trim() || apiProviderFetchingId !== null}
+                    onClick={() => void handleApiProviderFetchModels(provider.id)}
+                    leadingIcon={<Icon name="refresh" size="sm" aria-hidden="true" />}
                   >
-                    {t('providersSection.apiKeys.add')}
+                    {apiProviderFetchingId === provider.id
+                      ? t('providersSection.apiKeys.loadingModels')
+                      : t('providersSection.apiKeys.loadModels')}
                   </Button>
                   {provider.helpUrl && (
                     <a
@@ -3634,6 +3689,48 @@ const ModelSettingsPage: React.FC = () => {
                       <ExternalLink size={13} aria-hidden="true" />
                     </a>
                   )}
+                </div>
+                {apiProviderFetchError && (
+                  <div className="openbitfun-model-settings__providers-card-error" role="alert">
+                    <AlertTriangle size={14} aria-hidden="true" />
+                    <span>{apiProviderFetchError}</span>
+                  </div>
+                )}
+
+                <p className="openbitfun-model-settings__providers-card-hint">
+                  {t('providersSection.apiKeys.chooseModels')}
+                </p>
+                <div className="openbitfun-model-settings__providers-model-list">
+                  {buildProviderModelOptions(provider.id).map(option => {
+                    const checked = (apiProviderSelectedModels[provider.id] ?? []).includes(option.id);
+                    return (
+                      <label key={option.id} className="openbitfun-model-settings__providers-model-option">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleApiProviderModel(provider.id, option.id)}
+                        />
+                        <span className="openbitfun-model-settings__providers-model-name">{option.label}</span>
+                        {option.description && (
+                          <span className="openbitfun-model-settings__providers-model-desc">{option.description}</span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div className="openbitfun-model-settings__providers-card-actions">
+                  <Button
+                    size="sm"
+                    loading={apiProviderAddingId === provider.id}
+                    disabled={(apiProviderSelectedModels[provider.id] ?? []).length === 0 || apiProviderAddingId !== null}
+                    onClick={() => void handleApiProviderAdd(provider.id)}
+                    leadingIcon={<KeyRound size={14} aria-hidden="true" />}
+                  >
+                    {t('providersSection.apiKeys.addSelected', {
+                      count: (apiProviderSelectedModels[provider.id] ?? []).length,
+                    })}
+                  </Button>
                 </div>
                 {apiProviderAddError && (
                   <div className="openbitfun-model-settings__providers-card-error" role="alert">
