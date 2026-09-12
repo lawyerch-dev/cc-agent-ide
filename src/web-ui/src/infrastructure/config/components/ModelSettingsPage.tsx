@@ -26,7 +26,7 @@ import { OverflowText,
 } from '@openbitfun/ui';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Wifi, Loader, AlertTriangle, EyeOff, FolderOpen } from 'lucide-react';
+import { Wifi, Loader, AlertTriangle, EyeOff, FolderOpen, Zap } from 'lucide-react';
 import {
   AIModelConfig as AIModelConfigType, 
   ProxyConfig, 
@@ -49,6 +49,7 @@ import {
   removeProviderModelConfigs,
 } from '../services/modelConfigs';
 import { resolveProviderTemplates } from '../services/builtinProviderCatalog';
+import { QuickModelSetup } from './QuickModelSetup';
 import { normalizeProviderBaseUrl } from '../services/providerCatalog';
 import { supportsResponsesReasoning } from '../utils/reasoning';
 import {
@@ -411,6 +412,7 @@ const ModelSettingsPage: React.FC = () => {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   const [creationMode, setCreationMode] = useState<'selection' | 'form' | null>(null);
+  const [quickSetupOpen, setQuickSetupOpen] = useState(false);
   const [providerQuery, setProviderQuery] = useState('');
   const [showAllProviders, setShowAllProviders] = useState(false);
 
@@ -3726,14 +3728,24 @@ const ModelSettingsPage: React.FC = () => {
           title={tDefault('sections.providers')}
           description={t('subtitle')}
           extra={(
-            <Tooltip content={t('actions.addProvider')}>
-              <IconButton
-                aria-label={t('actions.addProvider')}
+            <>
+              <Button
+                variant="outline"
                 size="sm"
-                onClick={handleCreateNew}
-                icon={<Icon name="plus" size="md" />}
-              />
-            </Tooltip>
+                onClick={() => setQuickSetupOpen(true)}
+                leadingIcon={<Zap size={14} aria-hidden="true" />}
+              >
+                {t('quickSetup.title')}
+              </Button>
+              <Tooltip content={t('actions.addProvider')}>
+                <IconButton
+                  aria-label={t('actions.addProvider')}
+                  size="sm"
+                  onClick={handleCreateNew}
+                  icon={<Icon name="plus" size="md" />}
+                />
+              </Tooltip>
+            </>
           )}
         >
           {hasSuspendedEditorDraft && (
@@ -4227,6 +4239,13 @@ const ModelSettingsPage: React.FC = () => {
           : 'deleteConfirm.confirm')}
         type="warning"
         confirmDanger
+      />
+
+      <QuickModelSetup
+        open={quickSetupOpen}
+        variant="dialog"
+        onClose={() => setQuickSetupOpen(false)}
+        onComplete={() => setQuickSetupOpen(false)}
       />
     </ConfigPageLayout>
   );

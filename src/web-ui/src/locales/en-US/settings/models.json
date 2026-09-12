@@ -541,7 +541,11 @@
     "viewDetails": "View models.dev catalog details",
     "description": "Catalog status used for reasoning preset provider and model bindings. It is checked automatically when model settings open.",
     "activeSource": "Active source",
-    "source": { "cache": "Cache", "bundle": "Built-in snapshot", "empty": "Unavailable" },
+    "source": {
+      "cache": "Cache",
+      "bundle": "Built-in snapshot",
+      "empty": "Unavailable"
+    },
     "catalogSize": "Catalog size",
     "catalogSizeValue": "{{providers}} providers · {{models}} reasoning models",
     "cacheUpdatedAt": "Cache write time",
@@ -599,5 +603,24 @@
       "validJson": "JSON format is valid",
       "mergeHint": "Custom fields will override corresponding fields in the default request body"
     }
+  },
+  "quickSetup": {
+    "title": "Quick model setup",
+    "chooseProvider": "Choose your model provider",
+    "chooseModel": "Pick a recommended {{provider}} model",
+    "recommended": "Recommended model",
+    "apiKeyLabel": "API Key",
+    "apiKeyPlaceholder": "Paste your API key",
+    "getApiKey": "Need a key? Get one",
+    "next": "Next",
+    "back": "Back",
+    "cancel": "Not now",
+    "testAndSave": "Test & save",
+    "finish": "Finish setup",
+    "successTitle": "Set up complete",
+    "successDescription": "{{provider}} is now your main model. You are ready to go.",
+    "warningTitle": "Saved, but the connection test failed",
+    "warningDescription": "{{provider}} was saved as your main model, but the connection test failed. Check your API key or network settings.",
+    "later": "Later"
   }
 }

@@ -541,7 +541,11 @@
     "viewDetails": "查看 models.dev 目錄詳情",
     "description": "用於推理預設供應商和模型綁定的目錄狀態。開啟模型設定時會自動檢查更新",
     "activeSource": "目前來源",
-    "source": { "cache": "快取", "bundle": "內建快照", "empty": "無法使用" },
+    "source": {
+      "cache": "快取",
+      "bundle": "內建快照",
+      "empty": "無法使用"
+    },
     "catalogSize": "目錄規模",
     "catalogSizeValue": "{{providers}} 個供應商 · {{models}} 個推理模型",
     "cacheUpdatedAt": "快取寫入時間",
@@ -599,5 +603,24 @@
       "validJson": "JSON格式有效",
       "mergeHint": "自定義字段將覆蓋默認請求體中的對應字段"
     }
+  },
+  "quickSetup": {
+    "title": "快速設定模型",
+    "chooseProvider": "選擇模型服務商",
+    "chooseModel": "選擇 {{provider}} 的推薦模型",
+    "recommended": "推薦模型",
+    "apiKeyLabel": "API Key",
+    "apiKeyPlaceholder": "貼上你的 API Key",
+    "getApiKey": "還沒有 Key？取得一個",
+    "next": "下一步",
+    "back": "上一步",
+    "cancel": "暫不設定",
+    "testAndSave": "測試並儲存",
+    "finish": "完成設定",
+    "successTitle": "設定完成",
+    "successDescription": "已將 {{provider}} 設為你的主力模型，可以開始使用了。",
+    "warningTitle": "已儲存，但連線測試未通過",
+    "warningDescription": "{{provider}} 已儲存並設為主力模型，但連線測試未通過。請檢查 API Key 或網路設定。",
+    "later": "稍後再說"
   }
 }

@@ -80,6 +80,8 @@ const LazyAppLayout = lazy(async () => {
 
 const LazyGlobalSearchRoot = lazy(() => import('./global-search/GlobalSearchRoot'));
 
+const LazyModelSetupOnboarding = lazy(() => import('./startup/ModelSetupOnboarding'));
+
 /**
  * OpenBitFun main application component.
  *
@@ -952,6 +954,13 @@ function App() {
               <Suspense fallback={null}>
                 <LazyAppLayout onReady={handleAppLayoutReady} />
               </Suspense>
+
+              {/* First-run model setup guide (only while no model is configured). */}
+              {interactiveShellReady && !startupOverlayVisible && (
+                <Suspense fallback={null}>
+                  <LazyModelSetupOnboarding />
+                </Suspense>
+              )}
 
               {/* Context menu renderer */}
               <ContextMenuRenderer />

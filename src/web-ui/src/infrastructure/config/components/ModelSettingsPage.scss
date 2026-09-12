@@ -2256,3 +2256,201 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+// Quick model setup wizard (settings dialog + first-run fullscreen onboarding).
+.openbitfun-model-settings__quick-setup {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  color: var(--openbitfun-color-content-primary);
+
+  &--fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: var(--openbitfun-space-6);
+    overflow: auto;
+    background: var(--openbitfun-color-surface-canvas);
+  }
+
+  &-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 560px;
+    max-height: min(720px, calc(100vh - 2 * var(--openbitfun-space-6)));
+    overflow: hidden;
+    background: var(--openbitfun-color-surface-raised);
+    border: 1px solid var(--openbitfun-color-border-default);
+    border-radius: var(--openbitfun-radius-base);
+  }
+
+  &-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--openbitfun-space-3);
+    padding: var(--openbitfun-space-4) var(--openbitfun-space-5);
+    border-bottom: 1px solid var(--openbitfun-color-border-subtle);
+  }
+
+  &-title {
+    margin: 0;
+    font-size: var(--openbitfun-type-heading-dialog-font-size);
+    font-weight: var(--openbitfun-type-heading-dialog-font-weight);
+  }
+
+  &-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--openbitfun-space-4);
+    padding: var(--openbitfun-space-5);
+    overflow-y: auto;
+  }
+
+  &-step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--openbitfun-space-4);
+  }
+
+  &-subtitle {
+    margin: 0;
+    color: var(--openbitfun-color-content-secondary);
+    font-size: var(--openbitfun-type-body-sm-font-size);
+  }
+
+  &-providers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--openbitfun-space-2);
+  }
+
+  &-provider {
+    display: flex;
+    flex-direction: column;
+    gap: var(--openbitfun-space-1);
+    padding: var(--openbitfun-space-3);
+    text-align: left;
+    cursor: pointer;
+    background: var(--openbitfun-color-field-background);
+    border: 1px solid var(--openbitfun-color-field-border);
+    border-radius: var(--openbitfun-radius-sm);
+
+    &--active {
+      background: var(--openbitfun-color-accent-surface);
+      border-color: var(--openbitfun-color-accent-default);
+    }
+  }
+
+  &-provider-name {
+    color: var(--openbitfun-color-content-primary);
+    font-weight: var(--openbitfun-type-label-md-font-weight);
+  }
+
+  &-provider-desc {
+    color: var(--openbitfun-color-content-secondary);
+    font-size: var(--openbitfun-type-label-sm-font-size);
+  }
+
+  &-models {
+    display: flex;
+    flex-direction: column;
+    gap: var(--openbitfun-space-2);
+  }
+
+  &-model {
+    display: flex;
+    flex-direction: column;
+    gap: var(--openbitfun-space-1);
+    padding: var(--openbitfun-space-3);
+    text-align: left;
+    cursor: pointer;
+    background: var(--openbitfun-color-field-background);
+    border: 1px solid var(--openbitfun-color-field-border);
+    border-radius: var(--openbitfun-radius-sm);
+
+    &--active {
+      background: var(--openbitfun-color-accent-surface);
+      border-color: var(--openbitfun-color-accent-default);
+    }
+  }
+
+  &-model-name {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--openbitfun-space-2);
+    color: var(--openbitfun-color-content-primary);
+    font-weight: var(--openbitfun-type-label-md-font-weight);
+  }
+
+  &-model-badge {
+    padding: 0 var(--openbitfun-space-1);
+    color: var(--openbitfun-color-content-on-dark);
+    font-size: var(--openbitfun-type-label-xs-font-size);
+    background: var(--openbitfun-color-accent-default);
+    border-radius: var(--openbitfun-radius-sm);
+  }
+
+  &-model-desc {
+    color: var(--openbitfun-color-content-secondary);
+    font-size: var(--openbitfun-type-label-sm-font-size);
+  }
+
+  &-help {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--openbitfun-space-1);
+    width: fit-content;
+    color: var(--openbitfun-color-accent-default);
+    font-size: var(--openbitfun-type-label-sm-font-size);
+  }
+
+  &-error {
+    display: flex;
+    align-items: center;
+    gap: var(--openbitfun-space-2);
+    padding: var(--openbitfun-space-2) var(--openbitfun-space-3);
+    color: var(--openbitfun-color-status-danger-content);
+    font-size: var(--openbitfun-type-label-sm-font-size);
+    background: var(--openbitfun-color-status-danger-surface);
+    border: 1px solid var(--openbitfun-color-status-danger-border);
+    border-radius: var(--openbitfun-radius-sm);
+  }
+
+  &-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--openbitfun-space-3);
+    padding: var(--openbitfun-space-6) var(--openbitfun-space-4);
+    text-align: center;
+  }
+
+  &-result-icon {
+    color: var(--openbitfun-color-status-success-content);
+  }
+
+  &-result-title {
+    margin: 0;
+    font-size: var(--openbitfun-type-heading-dialog-font-size);
+    font-weight: var(--openbitfun-type-heading-dialog-font-weight);
+  }
+
+  &-result-desc {
+    margin: 0;
+    color: var(--openbitfun-color-content-secondary);
+    font-size: var(--openbitfun-type-body-sm-font-size);
+  }
+
+  &-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--openbitfun-space-2);
+    padding: var(--openbitfun-space-4) var(--openbitfun-space-5);
+    border-top: 1px solid var(--openbitfun-color-border-subtle);
+  }
+}
