@@ -370,12 +370,6 @@ fn configured_plugin_dialog_turn_port(
 }
 
 #[cfg(feature = "remote-connect")]
-fn current_workspace_path() -> Option<std::path::PathBuf> {
-    crate::service::workspace::get_global_workspace_service()
-        .and_then(|service| service.try_get_current_workspace_path())
-}
-
-#[cfg(feature = "remote-connect")]
 fn session_storage_request_from_binding(binding: &WorkspaceBinding) -> SessionStoragePathRequest {
     SessionStoragePathRequest {
         workspace_path: binding.logical_workspace_path().to_path_buf(),

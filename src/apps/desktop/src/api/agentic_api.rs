@@ -1617,7 +1617,6 @@ pub async fn create_session(
         }
     };
     request.project_workspace_path = Some(project_workspace_path.clone());
-    let wp = project_workspace_path.clone();
 
     let tracked_worktree_workspace_id = if resolved_execution_target.kind
         != SessionExecutionTargetKind::Local
@@ -1893,9 +1892,6 @@ pub async fn create_session(
             .await
             .map_err(|e| format!("Failed to persist Deep Review run manifest: {}", e))?;
     }
-
-    let session_id = session.session_id.clone();
-    // Notify auto-sync: new session created
 
     if let Some(target_evidence) = request.review_target_evidence {
         coordinator

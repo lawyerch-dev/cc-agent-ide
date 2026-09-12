@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+#[cfg_attr(not(windows), allow(dead_code))]
 const RENDERER_FAILURE_WINDOW: Duration = Duration::from_secs(10 * 60);
+#[cfg_attr(not(windows), allow(dead_code))]
 const RESTART_FAILURE_WINDOW: Duration = Duration::from_secs(10 * 60);
 
+#[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FailureKind {
     BrowserExited,
@@ -13,6 +16,7 @@ enum FailureKind {
     Other,
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RecoveryAction {
     Reload,
@@ -21,6 +25,7 @@ enum RecoveryAction {
     Observe,
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct RecoveryHistory {
@@ -28,6 +33,7 @@ struct RecoveryHistory {
     restart_attempts_ms: Vec<u64>,
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
 fn decide_recovery(
     history: &mut RecoveryHistory,
     failure: FailureKind,
@@ -50,6 +56,7 @@ fn decide_recovery(
     }
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
 fn restart_or_block(history: &mut RecoveryHistory, now_ms: u64) -> RecoveryAction {
     let window_ms = RESTART_FAILURE_WINDOW.as_millis() as u64;
     history
@@ -63,6 +70,7 @@ fn restart_or_block(history: &mut RecoveryHistory, now_ms: u64) -> RecoveryActio
     }
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
 fn restart_after_failed_reload(history: &mut RecoveryHistory, now_ms: u64) -> RecoveryAction {
     restart_or_block(history, now_ms)
 }

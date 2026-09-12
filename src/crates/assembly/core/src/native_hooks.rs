@@ -681,6 +681,7 @@ fn canonical_hook_workspace_scope(path: &Path) -> Option<String> {
     if !path.is_absolute() {
         return None;
     }
+    #[cfg_attr(not(windows), allow(unused_mut))]
     let mut scope = crate::agentic::workspace::canonical_local_workspace_path(path)
         .to_string_lossy()
         .replace('\\', "/");

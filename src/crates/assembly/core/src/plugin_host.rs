@@ -1977,6 +1977,7 @@ fn plugin_config_fingerprint(
 }
 
 fn comparable_instance_directory(directory: &str) -> String {
+    #[cfg_attr(not(windows), allow(unused_mut))]
     let mut comparable = directory.replace('\\', "/");
     #[cfg(windows)]
     comparable.make_ascii_lowercase();

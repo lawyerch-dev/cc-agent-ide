@@ -25,7 +25,7 @@ use tokio::sync::{
 };
 use tracing::{debug, error, info, warn};
 
-use crate::relay::transport::{send_outbound_message, ConnId, OutboundMessage};
+use crate::relay::transport::{ConnId, OutboundMessage};
 use crate::routes::api::AppState;
 
 const OUTBOUND_QUEUE_CAPACITY: usize = 128;
@@ -890,19 +890,6 @@ async fn activate_pending_device_if_authorized(
         conn_id,
     )
     .await
-}
-
-async fn send_json<T: Serialize>(tx: &mpsc::Sender<OutboundMessage>, msg: &T) -> bool {
-    match serde_json::to_string(msg) {
-        Ok(json) => match OutboundMessage::try_text(&json) {
-            Some(message) => send_outbound_message(tx, message).await,
-            None => false,
-        },
-        Err(e) => {
-            warn!("Failed to serialize outbound websocket message: {e}");
-            false
-        }
-    }
 }
 
 fn send_json_best_effort<T: Serialize>(tx: &mpsc::Sender<OutboundMessage>, msg: &T) -> bool {

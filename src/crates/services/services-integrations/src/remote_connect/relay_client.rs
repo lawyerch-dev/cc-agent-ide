@@ -352,7 +352,7 @@ impl RelayClient {
         lifecycle: &ConnectionOwner,
         generation: u64,
     ) {
-        let mut owner = lifecycle.lock().unwrap();
+        let owner = lifecycle.lock().unwrap();
         if owner.generation != generation {
             return;
         }
