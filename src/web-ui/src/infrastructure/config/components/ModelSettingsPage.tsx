@@ -684,6 +684,37 @@ const ModelSettingsPage: React.FC = () => {
       ));
   }, [preferredProviderRegion, providerTemplates, t]);
 
+  const catalogProviderById = useMemo(() => {
+    const map = new Map<string, ProviderCatalogProvider>();
+    for (const provider of modelCatalog?.provider_catalog?.providers ?? []) {
+      map.set(provider.id, provider);
+    }
+    return map;
+  }, [modelCatalog?.provider_catalog]);
+
+  const apiKeyProviders = useMemo(
+    () => providers.filter(provider => provider.requiresApiKey),
+    [providers],
+  );
+
+  const configuredProviderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const model of aiModels) {
+      const templateId = getProviderTemplateId(model);
+      if (templateId) ids.add(templateId);
+    }
+    return ids;
+  }, [aiModels]);
+
+  const getRecommendedModelId = useCallback((providerId: string): string | null => {
+    const template = providerTemplates[providerId];
+    if (!template) return null;
+    const resolved = catalogProviderById.get(providerId);
+    const recommended = resolved?.models?.filter(model => model.recommended) ?? [];
+    if (recommended.length > 0) return recommended[0].id;
+    return template.models[0] ?? null;
+  }, [catalogProviderById, providerTemplates]);
+
   const normalizedProviderQuery = providerQuery.trim().toLowerCase();
   const matchedProviders = useMemo(() => (
     normalizedProviderQuery
@@ -3489,37 +3520,6 @@ const ModelSettingsPage: React.FC = () => {
     : t('modelsDevCatalog.noCache');
 
   
-  const catalogProviderById = useMemo(() => {
-    const map = new Map<string, ProviderCatalogProvider>();
-    for (const provider of modelCatalog?.provider_catalog?.providers ?? []) {
-      map.set(provider.id, provider);
-    }
-    return map;
-  }, [modelCatalog?.provider_catalog]);
-
-  const apiKeyProviders = useMemo(
-    () => providers.filter(provider => provider.requiresApiKey),
-    [providers],
-  );
-
-  const configuredProviderIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const model of aiModels) {
-      const templateId = getProviderTemplateId(model);
-      if (templateId) ids.add(templateId);
-    }
-    return ids;
-  }, [aiModels]);
-
-  const getRecommendedModelId = useCallback((providerId: string): string | null => {
-    const template = providerTemplates[providerId];
-    if (!template) return null;
-    const resolved = catalogProviderById.get(providerId);
-    const recommended = resolved?.models?.filter(model => model.recommended) ?? [];
-    if (recommended.length > 0) return recommended[0].id;
-    return template.models[0] ?? null;
-  }, [catalogProviderById, providerTemplates]);
-
   const handleApiProviderAdd = async (providerId: string) => {
     const template = providerTemplates[providerId];
     const modelId = getRecommendedModelId(providerId);
